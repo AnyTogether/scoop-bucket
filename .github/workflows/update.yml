@@ -1,0 +1,93 @@
+name: Update manifest
+
+# Follows the latest stable AnyPS5 Desktop release (GitHub's "latest", never a nightly
+# pre-release) and moves bucket/anyps5-desktop.json to it with Scoop's own checkver.ps1: the
+# version, the zip's URL and its SHA-256 from the release's SHA256SUMS. The new manifest is
+# installed with Scoop before it is pushed.
+on:
+  schedule:
+    - cron: "29 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-manifest
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: windows-latest
+    env:
+      SOURCE: AnyTogether/AnyPS5-Desktop
+      APP: anyps5-desktop
+      MANIFEST: bucket/anyps5-desktop.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the latest release
+        id: release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh api "repos/$env:SOURCE/releases/latest" | ConvertFrom-Json
+          $tag = $release.tag_name
+          if ($release.prerelease -or $release.draft) {
+            "::notice::$tag is a pre-release or a draft, nothing to do"; exit 0
+          }
+          if ($tag -notmatch '^v(\d+(\.\d+)+)$') {
+            "::notice::$tag is not a vX.Y.Z release tag, nothing to do"; exit 0
+          }
+          $latest = $Matches[1]
+          $current = (Get-Content $env:MANIFEST -Raw | ConvertFrom-Json).version
+          "manifest: $current, latest release: $latest ($tag)"
+          if ([version]$latest -eq [version]$current) {
+            "::notice::The manifest is already at $current"; exit 0
+          }
+          if ([version]$latest -lt [version]$current) {
+            "::notice::$latest is older than the manifest's $current, nothing to do"; exit 0
+          }
+          foreach ($asset in 'AnyPS5-Desktop-windows-x64.zip', 'SHA256SUMS') {
+            if ($release.assets.name -notcontains $asset) {
+              "::notice::$tag has no $asset yet, trying again on the next run"; exit 0
+            }
+          }
+          "version=$latest" >> $env:GITHUB_OUTPUT
+
+      - name: Install Scoop
+        if: steps.release.outputs.version
+        shell: pwsh
+        run: |
+          Invoke-Expression "& {$(Invoke-RestMethod https://get.scoop.sh)} -RunAsAdmin"
+          Join-Path $env:USERPROFILE 'scoop\shims' >> $env:GITHUB_PATH
+
+      - name: Update the manifest
+        if: steps.release.outputs.version
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          & "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1" -App $env:APP -Dir bucket -Update -ThrowError
+          $now = (Get-Content $env:MANIFEST -Raw | ConvertFrom-Json).version
+          if ($now -ne $env:VERSION) { throw "checkver left the manifest at $now, not $env:VERSION" }
+          git diff --stat
+
+      - name: Install the new manifest
+        if: steps.release.outputs.version
+        shell: pwsh
+        run: ./.github/scripts/test-install.ps1
+
+      - name: Push
+        if: steps.release.outputs.version
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $env:MANIFEST
+          git commit -m "$env:APP`: Update to version $env:VERSION"
+          git push

@@ -1,0 +1,40 @@
+name: Test
+
+# Checks every manifest against Scoop's schema and installs it with Scoop on Windows: the
+# download, its hash, the unpacked launcher and its Start menu shortcut, then the uninstall.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check against Scoop's schema
+        shell: pwsh
+        run: |
+          python -m pip install --quiet check-jsonschema
+          check-jsonschema --schemafile https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json (Get-ChildItem bucket/*.json).FullName
+
+      - name: Install Scoop
+        shell: pwsh
+        run: |
+          Invoke-Expression "& {$(Invoke-RestMethod https://get.scoop.sh)} -RunAsAdmin"
+          Join-Path $env:USERPROFILE 'scoop\shims' >> $env:GITHUB_PATH
+
+      - name: Check for a newer release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: '& "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1" -Dir bucket -ThrowError'
+
+      - name: Install and uninstall
+        shell: pwsh
+        run: ./.github/scripts/test-install.ps1
