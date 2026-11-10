@@ -15,7 +15,7 @@ Scoop unpacks the release's portable zip (`AnyPS5-Desktop-windows-x64.zip`, with
 scoop update anyps5-desktop
 ```
 
-The launcher also offers its own updates, but those run the Windows installer, which puts a second copy in `%LOCALAPPDATA%\Programs\AnyPS5 Desktop` next to Scoop's. To keep only the Scoop copy, turn off **Settings → Behaviour → Check for updates** in the launcher and update with Scoop.
+The launcher still says when a new version is out, but releases after 0.1.20 see that Scoop installed them: instead of downloading the Windows installer they show `scoop update anyps5-desktop` (Settings › About copies it), so Scoop keeps the only copy. 0.1.20's own update runs the installer, which puts a second copy in `%LOCALAPPDATA%\Programs\AnyPS5 Desktop` next to Scoop's, so on 0.1.20 turn off **Settings → Behaviour → Check for updates**.
 
 Settings, profiles, logs, caches and downloaded engines live in `%APPDATA%\AnyPS5` and `%LOCALAPPDATA%\AnyPS5`, not in Scoop's folder, so updates and `scoop uninstall anyps5-desktop` leave them alone. Delete those two folders by hand to remove them as well. Your games and their saves stay where they are.
 

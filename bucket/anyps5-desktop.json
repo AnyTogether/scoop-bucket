@@ -4,9 +4,10 @@
     "homepage": "https://github.com/AnyTogether/AnyPS5-Desktop",
     "license": "GPL-2.0-only",
     "notes": [
-        "The launcher's own update offer runs the Windows installer, which puts a second copy in",
-        "%LOCALAPPDATA%\\Programs\\AnyPS5 Desktop. To keep this copy current instead, turn off",
-        "Settings -> Behaviour -> Check for updates and run 'scoop update anyps5-desktop'.",
+        "Update with 'scoop update anyps5-desktop'. Releases after 0.1.20 see that Scoop installed",
+        "them: they say when a new version is out, with that command, and leave the update to Scoop.",
+        "0.1.20's own update runs the Windows installer, which puts a second copy in",
+        "%LOCALAPPDATA%\\Programs\\AnyPS5 Desktop, so on 0.1.20 turn off Settings -> Behaviour -> Check for updates.",
         "Settings, logs, caches and engines stay in %APPDATA%\\AnyPS5 and %LOCALAPPDATA%\\AnyPS5."
     ],
     "suggest": {
